@@ -10,44 +10,53 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const lastKnownIpFile string = "last_known_ip_address.txt"
+
 func main() {
-	lastKnownIp, err := getLastKnownIp()
-	publicIp, err := getPublicIp()
+	lastKnownIp := getLastKnownIp()
+	publicIp := getPublicIp()
 
-	compareIp(lastKnownIp, publicIp)
-}
-
-func compareIp(lastKnownIp string, newIp string) {
-	if newIp != lastKnownIp {
-		// Send telegram message and handle error
-
-		// Update the last known IP in the file
+	if lastKnownIp != publicIp {
+		updateLastKnownIp(publicIp)
+		sendTelegramMessage("IP changed to: " + publicIp)
 	}
 }
 
-func getPublicIp() (string, error) {
+func updateLastKnownIp(ip string) {
+	ipToWrite := []byte(ip)
+
+	lastIPFile, err := os.Create(lastKnownIpFile)
+
+	checkError(err)
+
+	defer lastIPFile.Close()
+
+	lastIPFile.Write(ipToWrite)
+}
+
+func getPublicIp() string {
 	resp, err := http.Get("https://api.ipify.org")
 
-	if err != nil {
-		return "", err
-	}
+	checkError(err)
 
 	defer resp.Body.Close()
 
 	ip, err := io.ReadAll(resp.Body)
 
-	return string(ip), err
+	checkError(err)
+
+	return string(ip)
 }
 
-func getLastKnownIp() (string, error) {
-	lastIPFile := "last_known_ip_address.txt"
+func getLastKnownIp() string {
+	lastIPFile := lastKnownIpFile
 	lastIPBytes, err := os.ReadFile(lastIPFile)
-	if err != nil && !os.IsNotExist(err) {
-		panic(err)
-	}
+
+	checkError(err)
+
 	lastIP := string(lastIPBytes)
 
-	return lastIP, err
+	return lastIP
 }
 
 func sendTelegramMessage(message string) {
@@ -68,9 +77,13 @@ func sendTelegramMessage(message string) {
 func getEnvVariable(key string) string {
 	err := godotenv.Load(".env")
 
-	if err != nil {
-		log.Fatalf("Error loading .env file")
-	}
+	checkError(err)
 
 	return os.Getenv(key)
+}
+
+func checkError(err error) {
+	if err != nil {
+		panic(err)
+	}
 }
