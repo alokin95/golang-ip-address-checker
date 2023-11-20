@@ -11,13 +11,18 @@ import (
 )
 
 func main() {
-	text, err := getPublicIp()
+	lastKnownIp, err := getLastKnownIp()
+	publicIp, err := getPublicIp()
 
-	if err != nil {
-		sendTelegramMessage(err.Error())
+	compareIp(lastKnownIp, publicIp)
+}
+
+func compareIp(lastKnownIp string, newIp string) {
+	if newIp != lastKnownIp {
+		// Send telegram message and handle error
+
+		// Update the last known IP in the file
 	}
-
-	sendTelegramMessage(text)
 }
 
 func getPublicIp() (string, error) {
@@ -32,6 +37,17 @@ func getPublicIp() (string, error) {
 	ip, err := io.ReadAll(resp.Body)
 
 	return string(ip), err
+}
+
+func getLastKnownIp() (string, error) {
+	lastIPFile := "last_known_ip_address.txt"
+	lastIPBytes, err := os.ReadFile(lastIPFile)
+	if err != nil && !os.IsNotExist(err) {
+		panic(err)
+	}
+	lastIP := string(lastIPBytes)
+
+	return lastIP, err
 }
 
 func sendTelegramMessage(message string) {
